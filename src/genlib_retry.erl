@@ -4,8 +4,10 @@
 -module(genlib_retry).
 
 -export([linear/2]).
+-export([linear/3]).
 -export([exponential/3]).
 -export([exponential/4]).
+-export([exponential/5]).
 -export([intervals/1]).
 
 -export([timecap/2]).
@@ -16,10 +18,13 @@
 
 -type retries_num() :: pos_integer() | infinity.
 
+-type wait_time() :: pos_integer().
+-type step_timeout() :: wait_time() | {jitter, wait_time(), pos_integer()}.
+
 -opaque strategy() ::
-    {linear, Retries :: retries_num(), Timeout :: pos_integer()}
-    | {exponential, Retries :: retries_num(), Factor :: number(), Timeout :: pos_integer(), MaxTimeout :: timeout()}
-    | {array, Array :: list(pos_integer())}
+    {linear, Retries :: retries_num(), Timeout :: step_timeout()}
+    | {exponential, Retries :: retries_num(), Factor :: number(), Timeout :: step_timeout(), MaxTimeout :: timeout()}
+    | {array, Array :: list(step_timeout())}
     | {timecap, Start :: pos_integer(), Finish :: pos_integer(), strategy()}
     | finish.
 
@@ -40,6 +45,19 @@ linear(Retries = {max_total_timeout, MaxTotalTimeout}, Timeout) when
         ?IS_POSINT(Timeout)
 ->
     {linear, compute_retries(linear, Retries, Timeout), Timeout}.
+
+-spec linear(retries_num() | {max_total_timeout, pos_integer()}, pos_integer(), pos_integer()) -> strategy().
+linear(Retries = {max_total_timeout, MaxTotalTimeout}, Timeout, MaxJitter) when
+    ?IS_MAX_TOTAL_TIMEOUT(MaxTotalTimeout) andalso
+        ?IS_POSINT(Timeout) andalso
+        ?IS_POSINT(MaxJitter)
+->
+    {linear, compute_retries(linear, Retries, Timeout), {jitter, Timeout, MaxJitter}};
+linear(Retries, Timeout, MaxJitter) when
+    ?IS_POSINT(Timeout) andalso
+        ?IS_POSINT(MaxJitter)
+->
+    {linear, Retries, {jitter, Timeout, MaxJitter}}.
 
 -spec exponential(retries_num() | {max_total_timeout, pos_integer()}, number(), pos_integer()) -> strategy().
 exponential(Retries, Factor, Timeout) when
@@ -64,7 +82,28 @@ exponential(Retries = {max_total_timeout, MaxTotalTimeout}, Factor, Timeout, Max
 ->
     {exponential, compute_retries(exponential, Retries, {Factor, Timeout, MaxTimeout}), Factor, Timeout, MaxTimeout}.
 
+-spec exponential(
+    retries_num() | {max_total_timeout, pos_integer()},
+    number(),
+    pos_integer(),
+    timeout(),
+    pos_integer()
+) -> strategy().
+exponential(Retries, Factor, Timeout, MaxTimeout, MaxJitter) when
+    ?IS_RETRIES(Retries) andalso
+        ?IS_POSINT(Timeout) andalso
+        ?IS_POSINT(MaxJitter) andalso
+        Factor > 0 andalso
+        (MaxTimeout =:= infinity orelse ?IS_POSINT(MaxTimeout))
+->
+    {exponential, Retries, Factor, {jitter, Timeout, MaxJitter}, MaxTimeout}.
+
 -spec intervals([pos_integer(), ...]) -> strategy().
+intervals(Array = [{jitter, Timeout, MaxJitter} | _]) when
+    ?IS_POSINT(Timeout) andalso
+        ?IS_POSINT(MaxJitter)
+->
+    {array, Array};
 intervals(Array = [Timeout | _]) when ?IS_POSINT(Timeout) ->
     {array, Array}.
 
@@ -80,10 +119,18 @@ timecap(_, _Strategy) ->
 %%
 
 -spec next_step(strategy()) -> {wait, Timeout :: pos_integer(), strategy()} | finish.
+next_step({linear, Retries, {jitter, Timeout, MaxJitter}}) when Retries > 0 ->
+    Jitter = calc_jitter(MaxJitter),
+    {wait, Timeout + Jitter, {linear, release_retry(Retries), {jitter, Timeout, MaxJitter}}};
 next_step({linear, Retries, Timeout}) when Retries > 0 ->
     {wait, Timeout, {linear, release_retry(Retries), Timeout}};
 next_step({linear, _, _}) ->
     finish;
+next_step({exponential, Retries, Factor, {jitter, Timeout, MaxJitter}, MaxTimeout}) when Retries > 0 ->
+    Jitter = calc_jitter(MaxJitter),
+    NewTimeout = min(round(Timeout * Factor), MaxTimeout),
+    {wait, Timeout + Jitter,
+        {exponential, release_retry(Retries), Factor, {jitter, NewTimeout, MaxJitter}, MaxTimeout}};
 next_step({exponential, Retries, Factor, Timeout, MaxTimeout}) when Retries > 0 ->
     NewTimeout = min(round(Timeout * Factor), MaxTimeout),
     {wait, Timeout, {exponential, release_retry(Retries), Factor, NewTimeout, MaxTimeout}};
@@ -91,6 +138,9 @@ next_step({exponential, _, _, _, _}) ->
     finish;
 next_step({array, []}) ->
     finish;
+next_step({array, [{jitter, Timeout, MaxJitter} | Remain]}) ->
+    Jitter = calc_jitter(MaxJitter),
+    {wait, Timeout + Jitter, {array, Remain}};
 next_step({array, [Timeout | Remain]}) ->
     {wait, Timeout, {array, Remain}};
 next_step({timecap, Last, Deadline, Strategy}) ->
@@ -158,3 +208,6 @@ release_retry(N) ->
 
 now_ms() ->
     genlib_time:ticks() div 1000.
+
+calc_jitter(MaxJitter) ->
+    rand:uniform(MaxJitter + 1) - 1.
