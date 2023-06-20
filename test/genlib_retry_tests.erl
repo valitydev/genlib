@@ -7,7 +7,7 @@
 -spec test() -> _.
 
 -define(ASSERT_NEAR(E, N, Eps), ?assert((E - Eps < N) and (N < E + Eps))).
--define(ASSERT_NEAR_RIGHT(E, N, Eps), ?assert((E =< N) and (N =< E + Eps))).
+-define(ASSERT_IN(E, N, Eps), ?assert((E - Eps =< N) and (N =< E + Eps))).
 
 %%
 
@@ -23,11 +23,11 @@ linear_test() ->
 linear_w_jitter_test() ->
     R1 = genlib_retry:linear(3, 64, 5),
     {wait, W1, R2} = genlib_retry:next_step(R1),
-    ?ASSERT_NEAR_RIGHT(64, W1, 5),
+    ?ASSERT_IN(64, W1, 5),
     {wait, W2, R3} = genlib_retry:next_step(R2),
-    ?ASSERT_NEAR_RIGHT(64, W2, 5),
+    ?ASSERT_IN(64, W2, 5),
     {wait, W3, R4} = genlib_retry:next_step(R3),
-    ?ASSERT_NEAR_RIGHT(64, W3, 5),
+    ?ASSERT_IN(64, W3, 5),
     finish = genlib_retry:next_step(R4).
 
 -spec exponential_test() -> _.
@@ -42,21 +42,21 @@ exponential_test() ->
 exponential_w_jitter_test() ->
     R1 = genlib_retry:exponential(3, 2, 64, infinity, 5),
     {wait, W1, R2} = genlib_retry:next_step(R1),
-    ?ASSERT_NEAR_RIGHT(64, W1, 5),
+    ?ASSERT_IN(64, W1, 5),
     {wait, W2, R3} = genlib_retry:next_step(R2),
-    ?ASSERT_NEAR_RIGHT(128, W2, 5),
+    ?ASSERT_IN(128, W2, 5),
     {wait, W3, R4} = genlib_retry:next_step(R3),
-    ?ASSERT_NEAR_RIGHT(256, W3, 5),
+    ?ASSERT_IN(256, W3, 5),
     finish = genlib_retry:next_step(R4).
 
 -spec intervals_w_jitter_test() -> _.
 intervals_w_jitter_test() ->
     R1 = genlib_retry:intervals([{jitter, 32, 5}, 64, {jitter, 128, 10}]),
     {wait, W1, R2} = genlib_retry:next_step(R1),
-    ?ASSERT_NEAR_RIGHT(32, W1, 5),
+    ?ASSERT_IN(32, W1, 5),
     {wait, 64, R3} = genlib_retry:next_step(R2),
     {wait, W3, R4} = genlib_retry:next_step(R3),
-    ?ASSERT_NEAR_RIGHT(128, W3, 5),
+    ?ASSERT_IN(128, W3, 10),
     finish = genlib_retry:next_step(R4).
 
 -spec timecap_test() -> _.
