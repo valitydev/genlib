@@ -11,6 +11,54 @@
 
 %%
 
+-spec policy_to_strategy_test_() -> [_].
+policy_to_strategy_test_() ->
+    [
+        ?_assertEqual(Strategy, genlib_retry:new_strategy(Policy))
+     || {Policy, Strategy} <- [
+            {
+                {linear, 3, 64},
+                {linear, 3, 64}
+            },
+            {
+                {linear, {max_total_timeout, 256}, 64},
+                {linear, 4, 64}
+            },
+            {
+                {exponential, 3, 2, 64},
+                {exponential, 3, 2, 64, infinity}
+            },
+            {
+                {exponential, {max_total_timeout, 2048}, 2, 64},
+                {exponential, 5, 2, 64, infinity}
+            },
+            {
+                {exponential, 3, 2, {jitter, 64, 32}},
+                {exponential, 3, 2, {jitter, 64, 32}, infinity}
+            },
+            {
+                {exponential, {max_total_timeout, 4096}, 2, {jitter, 64, 32}},
+                {exponential, 6, 2, {jitter, 64, 32}, infinity}
+            },
+            {
+                {exponential, 3, 2, 64, 1024},
+                {exponential, 3, 2, 64, 1024}
+            },
+            {
+                {exponential, {max_total_timeout, 4096}, 2, 64, 1024},
+                {exponential, 7, 2, 64, 1024}
+            },
+            {
+                {exponential, {max_total_timeout, 8182}, 2, {jitter, 64, 8}, 1024},
+                {exponential, 11, 2, {jitter, 64, 8}, 1024}
+            },
+            {
+                {intervals, [2, 16, 64, {jitter, 1024, 16}]},
+                {array, [2, 16, 64, {jitter, 1024, 16}]}
+            }
+        ]
+    ].
+
 -spec linear_test() -> _.
 linear_test() ->
     R1 = genlib_retry:linear(3, 64),
@@ -21,7 +69,7 @@ linear_test() ->
 
 -spec linear_w_jitter_test() -> _.
 linear_w_jitter_test() ->
-    R1 = genlib_retry:linear(3, 64, 5),
+    R1 = genlib_retry:linear(3, {jitter, 64, 5}),
     {wait, W1, R2} = genlib_retry:next_step(R1),
     ?ASSERT_IN(64, W1, 5),
     {wait, W2, R3} = genlib_retry:next_step(R2),
@@ -40,7 +88,7 @@ exponential_test() ->
 
 -spec exponential_w_jitter_test() -> _.
 exponential_w_jitter_test() ->
-    R1 = genlib_retry:exponential(3, 2, 64, infinity, 5),
+    R1 = genlib_retry:exponential(3, 2, {jitter, 64, 5}, infinity),
     {wait, W1, R2} = genlib_retry:next_step(R1),
     ?ASSERT_IN(64, W1, 5),
     {wait, W2, R3} = genlib_retry:next_step(R2),
