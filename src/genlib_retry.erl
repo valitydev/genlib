@@ -4,23 +4,32 @@
 -module(genlib_retry).
 
 -export([linear/2]).
--export([linear/3]).
 -export([exponential/3]).
 -export([exponential/4]).
--export([exponential/5]).
 -export([intervals/1]).
 
 -export([timecap/2]).
 
 -export([next_step/1]).
 
+-export([new_strategy/1]).
+-export([new_strategy/3]).
+
 -export_type([strategy/0]).
+-export_type([policy/0]).
 
 -type retries_num() :: pos_integer() | infinity.
-
+-type max_retries() :: retries_num() | {max_total_timeout, pos_integer()}.
 -type wait_time() :: pos_integer().
 -type jitter_epsilon() :: pos_integer().
 -type step_timeout() :: wait_time() | {jitter, wait_time(), jitter_epsilon()}.
+
+-type policy() ::
+    {linear, Retries :: max_retries(), Timeout :: step_timeout()}
+    | {exponential, Retries :: max_retries(), Factor :: number(), Timeout :: step_timeout()}
+    | {exponential, Retries :: max_retries(), Factor :: number(), Timeout :: step_timeout(), MaxTimeout :: timeout()}
+    | {intervals, Array :: list(step_timeout())}
+    | {timecap, timeout(), policy()}.
 
 -opaque strategy() ::
     {linear, Retries :: retries_num(), Timeout :: step_timeout()}
@@ -35,7 +44,7 @@
 -define(IS_RETRIES(V), (V =:= infinity orelse ?IS_POSINT(V))).
 -define(IS_MAX_TOTAL_TIMEOUT(V), (is_integer(V) andalso V >= 0)).
 
--spec linear(retries_num() | {max_total_timeout, pos_integer()}, pos_integer()) -> strategy().
+-spec linear(retries_num() | {max_total_timeout, pos_integer()}, step_timeout()) -> strategy().
 linear(Retries, Timeout) when
     ?IS_RETRIES(Retries) andalso
         ?IS_POSINT(Timeout)
@@ -45,29 +54,34 @@ linear(Retries = {max_total_timeout, MaxTotalTimeout}, Timeout) when
     ?IS_MAX_TOTAL_TIMEOUT(MaxTotalTimeout) andalso
         ?IS_POSINT(Timeout)
 ->
-    {linear, compute_retries(linear, Retries, Timeout), Timeout}.
-
--spec linear(retries_num() | {max_total_timeout, pos_integer()}, pos_integer(), pos_integer()) -> strategy().
-linear(Retries = {max_total_timeout, MaxTotalTimeout}, Timeout, Epsilon) when
+    {linear, compute_retries(linear, Retries, Timeout), Timeout};
+linear(Retries = {max_total_timeout, MaxTotalTimeout}, {jitter, Timeout, Epsilon}) when
     ?IS_MAX_TOTAL_TIMEOUT(MaxTotalTimeout) andalso
         ?IS_POSINT(Timeout) andalso
         ?IS_POSINT(Epsilon)
 ->
     {linear, compute_retries(linear, Retries, Timeout), {jitter, Timeout, Epsilon}};
-linear(Retries, Timeout, Epsilon) when
+linear(Retries, {jitter, Timeout, Epsilon}) when
     ?IS_POSINT(Timeout) andalso
         ?IS_POSINT(Epsilon)
 ->
     {linear, Retries, {jitter, Timeout, Epsilon}}.
 
--spec exponential(retries_num() | {max_total_timeout, pos_integer()}, number(), pos_integer()) -> strategy().
+-spec exponential(retries_num() | {max_total_timeout, pos_integer()}, number(), step_timeout()) -> strategy().
 exponential(Retries, Factor, Timeout) when
     ?IS_POSINT(Timeout) andalso
         Factor > 0
 ->
-    exponential(Retries, Factor, Timeout, infinity).
+    exponential(Retries, Factor, Timeout, infinity);
+exponential(Retries, Factor, {jitter, Timeout, Epsilon}) when
+    ?IS_POSINT(Timeout) andalso
+        ?IS_POSINT(Epsilon) andalso
+        Factor > 0
+->
+    exponential(Retries, Factor, {jitter, Timeout, Epsilon}, infinity).
 
--spec exponential(retries_num() | {max_total_timeout, pos_integer()}, number(), pos_integer(), timeout()) -> strategy().
+-spec exponential(retries_num() | {max_total_timeout, pos_integer()}, number(), step_timeout(), timeout()) ->
+    strategy().
 exponential(Retries, Factor, Timeout, MaxTimeout) when
     ?IS_RETRIES(Retries) andalso
         ?IS_POSINT(Timeout) andalso
@@ -75,29 +89,30 @@ exponential(Retries, Factor, Timeout, MaxTimeout) when
         (MaxTimeout =:= infinity orelse ?IS_POSINT(MaxTimeout))
 ->
     {exponential, Retries, Factor, Timeout, MaxTimeout};
-exponential(Retries = {max_total_timeout, MaxTotalTimeout}, Factor, Timeout, MaxTimeout) when
-    ?IS_MAX_TOTAL_TIMEOUT(MaxTotalTimeout) andalso
-        ?IS_POSINT(Timeout) andalso
-        Factor > 0 andalso
-        (MaxTimeout =:= infinity orelse ?IS_POSINT(MaxTimeout))
-->
-    {exponential, compute_retries(exponential, Retries, {Factor, Timeout, MaxTimeout}), Factor, Timeout, MaxTimeout}.
-
--spec exponential(
-    retries_num() | {max_total_timeout, pos_integer()},
-    number(),
-    pos_integer(),
-    timeout(),
-    pos_integer()
-) -> strategy().
-exponential(Retries, Factor, Timeout, MaxTimeout, Epsilon) when
+exponential(Retries, Factor, {jitter, Timeout, Epsilon}, MaxTimeout) when
     ?IS_RETRIES(Retries) andalso
         ?IS_POSINT(Timeout) andalso
         ?IS_POSINT(Epsilon) andalso
         Factor > 0 andalso
         (MaxTimeout =:= infinity orelse ?IS_POSINT(MaxTimeout))
 ->
-    {exponential, Retries, Factor, {jitter, Timeout, Epsilon}, MaxTimeout}.
+    {exponential, Retries, Factor, {jitter, Timeout, Epsilon}, MaxTimeout};
+exponential(Retries = {max_total_timeout, MaxTotalTimeout}, Factor, Timeout, MaxTimeout) when
+    ?IS_MAX_TOTAL_TIMEOUT(MaxTotalTimeout) andalso
+        ?IS_POSINT(Timeout) andalso
+        Factor > 0 andalso
+        (MaxTimeout =:= infinity orelse ?IS_POSINT(MaxTimeout))
+->
+    {exponential, compute_retries(exponential, Retries, {Factor, Timeout, MaxTimeout}), Factor, Timeout, MaxTimeout};
+exponential(Retries = {max_total_timeout, MaxTotalTimeout}, Factor, {jitter, Timeout, Epsilon}, MaxTimeout) when
+    ?IS_MAX_TOTAL_TIMEOUT(MaxTotalTimeout) andalso
+        ?IS_POSINT(Timeout) andalso
+        ?IS_POSINT(Epsilon) andalso
+        Factor > 0 andalso
+        (MaxTimeout =:= infinity orelse ?IS_POSINT(MaxTimeout))
+->
+    {exponential, compute_retries(exponential, Retries, {Factor, Timeout, MaxTimeout}), Factor,
+        {jitter, Timeout, Epsilon}, MaxTimeout}.
 
 -spec intervals([pos_integer(), ...]) -> strategy().
 intervals(Array = [{jitter, Timeout, Epsilon} | _]) when
@@ -161,6 +176,34 @@ next_step(finish) ->
 next_step(Strategy) ->
     error(badarg, [Strategy]).
 
+%
+
+-spec new_strategy(policy()) -> strategy().
+new_strategy({linear, Retries, Timeout}) ->
+    linear(Retries, Timeout);
+new_strategy({exponential, Retries, Factor, Timeout}) ->
+    exponential(Retries, Factor, Timeout);
+new_strategy({exponential, Retries, Factor, Timeout, MaxTimeout}) ->
+    exponential(Retries, Factor, Timeout, MaxTimeout);
+new_strategy({intervals, Array}) ->
+    intervals(Array);
+new_strategy({timecap, Timeout, Policy}) ->
+    timecap(Timeout, new_strategy(Policy));
+new_strategy(BadPolicy) ->
+    erlang:error(badarg, [BadPolicy]).
+
+-spec new_strategy
+    (policy(), genlib_time:ts(), non_neg_integer()) -> strategy();
+    (policy(), undefined, undefined) -> strategy().
+new_strategy(PolicySpec, undefined, undefined) ->
+    new_strategy(PolicySpec);
+new_strategy(PolicySpec, _InitialTimestamp, Attempt) ->
+    %% TODO: Use InitialTimestamp
+    Strategy = new_strategy(PolicySpec),
+    skip_steps(Strategy, Attempt).
+
+%
+
 -spec compute_retries
     (
         linear,
@@ -211,3 +254,16 @@ now_ms() ->
 
 calc_jitter(Epsilon) ->
     rand:uniform(2 * Epsilon + 1) - Epsilon - 1.
+
+-spec skip_steps(strategy(), non_neg_integer()) -> strategy().
+skip_steps(Strategy, 0) ->
+    Strategy;
+skip_steps(Strategy, N) when N > 0 ->
+    NewStrategy =
+        case next_step(Strategy) of
+            {wait, _Timeout, NextStrategy} ->
+                NextStrategy;
+            finish = NextStrategy ->
+                NextStrategy
+        end,
+    skip_steps(NewStrategy, N - 1).
