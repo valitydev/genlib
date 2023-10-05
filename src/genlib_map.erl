@@ -20,6 +20,7 @@
 -export([fold_while/3]).
 -export([search/2]).
 -export([zipfold/4]).
+-export([flatten_join/2]).
 
 %%
 
@@ -199,3 +200,58 @@ zipfold(Fun, Acc, M1, M2) ->
         Acc,
         M1
     ).
+
+%% @doc Flattens nested map and joins its keys as binaries with given separator
+-spec flatten_join(char(), map()) -> map().
+flatten_join(Separator, Map) when is_map(Map) ->
+    {Result, _} = flatten_join(Separator, Map, #{}, []),
+    Result.
+
+flatten_join(Separator, Map, IntoMap, Prefixes) when is_map(Map) ->
+    Folder = fun
+        (K, V, {Acc, Prefix}) when is_map(V) ->
+            {Acc1, _} = flatten_join(Separator, V, Acc, [K | Prefix]),
+            {Acc1, Prefix};
+        (K, V, {Acc, Prefix}) ->
+            {maps:put(join_key(Separator, [K | Prefix]), V, Acc), Prefix}
+    end,
+    maps:fold(Folder, {IntoMap, Prefixes}, Map).
+
+join_key(Separator, Parts) ->
+    Transformer = fun
+        (V) when is_atom(V) -> atom_to_binary(V);
+        (V) when is_list(V) -> list_to_binary(V);
+        (V) when is_binary(V) -> V;
+        (V) -> list_to_binary(io_lib:format("~p", [V]))
+    end,
+    iolist_to_binary(lists:join(Separator, lists:map(Transformer, lists:reverse(Parts)))).
+
+-ifdef(TEST).
+-include_lib("eunit/include/eunit.hrl").
+
+-spec test() -> _.
+
+-spec flatten_join_test() -> _.
+flatten_join_test() ->
+    ?assertEqual(
+        #{
+            <<"a.b.c">> => "test",
+            <<"a.d">> => <<"test">>,
+            <<"a.b.e">> => 42,
+            <<"a.b.{arbitrary,[#{term => term}]}">> => "arbitrary term",
+            <<"f">> => 42
+        },
+        flatten_join($., #{
+            a => #{
+                b => #{
+                    "c" => "test",
+                    "e" => 42,
+                    {arbitrary, [#{term => term}]} => "arbitrary term"
+                },
+                "d" => <<"test">>
+            },
+            f => 42
+        })
+    ).
+
+-endif.
