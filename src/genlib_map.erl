@@ -238,7 +238,7 @@ flatten_join_test() ->
             <<"a.b.c">> => "test",
             <<"a.d">> => <<"test">>,
             <<"a.b.e">> => 42,
-            <<"a.b.{arbitrary,[#{term => term}]}">> => "arbitrary term",
+            <<"a.b.{arbitrary,[#{<<\"binary\">> => \"string\"}]}">> => "arbitrary term",
             <<"f">> => 42
         },
         flatten_join($., #{
@@ -246,7 +246,7 @@ flatten_join_test() ->
                 b => #{
                     "c" => "test",
                     "e" => 42,
-                    {arbitrary, [#{term => term}]} => "arbitrary term"
+                    {arbitrary, [#{<<"binary">> => "string"}]} => "arbitrary term"
                 },
                 "d" => <<"test">>
             },
