@@ -46,6 +46,19 @@
 -export([perf/0, perf/3, perf1/0, test/0, test/2]).
 
 -include_lib("eunit/include/eunit.hrl").
+
+-dialyzer([
+    %% NOTE Supress warning for tests requiring major refactor
+    {nowarn_function, [
+        binary_printing_test/0,
+        bitstring_printing_test/0,
+        list_printing_test/0,
+        print_terms_without_format_string_test/0
+    ]},
+    %% NOTE Suppresses warnings like
+    %%      "Cons will produce an improper list since its 2nd argument is 'b'"
+    {no_improper_lists, test/2}
+]).
 -endif.
 
 -type format_string() :: atom() | string() | binary().

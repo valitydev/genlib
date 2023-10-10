@@ -1,19 +1,17 @@
+# general
 log
-logs
 /_build/
-/rebar.lock
+/_checkouts/
 *~
-*.beam
 erl_crash.dump
-dev.config
+rebar3.crashdump
 .tags*
 *.sublime-workspace
+.edts
 .DS_Store
+/.idea/
+*.beam
+/test/log/
 
-# wercker
-/_builds/
-/_cache/
-/_projects/
-/_steps/
-/_temp/
-ci/rebar.config
+tags
+.image.dev
