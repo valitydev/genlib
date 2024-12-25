@@ -156,7 +156,7 @@ print(Atom, _Max, #print_options{force_strings = NoQuote}) when is_atom(Atom) ->
             false -> L
         end,
     {R, length(R)};
-print(Bin, _Max, O = #print_options{depth = 1}) when is_binary(Bin) ->
+print(Bin, _Max, #print_options{depth = 1} = O) when is_binary(Bin) ->
     case O#print_options.lists_as_strings of
         true when Bin == <<>> ->
             {"<<>>", 4};
@@ -332,9 +332,9 @@ list_body(_, Max, _Options, _) when Max < 4 ->
     {"...", 3};
 list_body(_, _Max, #print_options{depth = 0}, _) ->
     {"...", 3};
-list_body([H], Max, Options = #print_options{depth = 1}, _) ->
+list_body([H], Max, #print_options{depth = 1} = Options, _) ->
     print(H, Max, Options);
-list_body([H | _], Max, Options = #print_options{depth = 1}, Type) ->
+list_body([H | _], Max, #print_options{depth = 1} = Options, Type) ->
     {List, Len} = print(H, Max - 4, Options),
     Sep =
         case Type of
@@ -439,7 +439,7 @@ alist(_, Max, #print_options{force_strings = true}) when Max < 4 ->
     {"...", 3};
 alist(_, Max, #print_options{force_strings = false}) when Max < 5 ->
     {"...\"", 4};
-alist([H | T], Max, Options = #print_options{force_strings = false, lists_as_strings = true}) when
+alist([H | T], Max, #print_options{force_strings = false, lists_as_strings = true} = Options) when
     H =:= $"; H =:= $\\
 ->
     %% preserve escaping around quotes
@@ -464,7 +464,7 @@ alist([H | T], Max, Options) when H =:= $\t; H =:= $\n; H =:= $\r; H =:= $\v; H 
 alist([H | T], Max, #print_options{force_strings = true} = Options) when is_integer(H) ->
     {L, Len} = alist(T, Max - 1, Options),
     {[H | L], Len + 1};
-alist([H | T], Max, Options = #print_options{force_strings = true}) when is_binary(H); is_list(H) ->
+alist([H | T], Max, #print_options{force_strings = true} = Options) when is_binary(H); is_list(H) ->
     {List, Len} = print(H, Max, Options),
     case (Max - Len) =< 0 of
         true ->

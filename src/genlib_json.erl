@@ -196,7 +196,7 @@ to_map_opt(Value) ->
 from_map(Map) ->
     from_map_opt(Map).
 
-from_map_opt(Map = #{}) ->
+from_map_opt(#{} = Map) ->
     from_list(maps:to_list(maps:map(fun(_, Value) -> from_map_opt(Value) end, Map)));
 from_map_opt(List) when is_list(List) ->
     lists:map(fun from_map_opt/1, List);

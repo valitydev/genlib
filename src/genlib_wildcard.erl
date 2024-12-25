@@ -10,7 +10,7 @@
 -spec match(binary(), binary()) -> boolean().
 match(<<H/utf8, R/binary>>, <<"\\"/utf8, H/utf8, T/binary>>) ->
     match(R, T);
-match(Body = <<_/utf8, Rest/binary>>, Pattern = <<"*"/utf8, T/binary>>) ->
+match(<<_/utf8, Rest/binary>> = Body, <<"*"/utf8, T/binary>> = Pattern) ->
     match(Body, T) orelse match(Rest, Pattern);
 match(Body, <<"*"/utf8, T/binary>>) ->
     match(Body, T);

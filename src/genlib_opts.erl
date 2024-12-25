@@ -38,7 +38,8 @@ get(Key, _, _) ->
 
 -spec require(key(), opts()) -> any() | no_return().
 require(Key, Opts) ->
-    case get(Key, Opts, Ref = make_ref()) of
+    Ref = make_ref(),
+    case get(Key, Opts, Ref) of
         Ref -> error({missing_options, Key});
         Value -> Value
     end.

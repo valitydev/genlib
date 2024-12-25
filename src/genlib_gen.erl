@@ -83,8 +83,8 @@
 
 -spec reg_name2_ref(reg_name()) -> ref().
 reg_name2_ref({local, Name}) -> Name;
-reg_name2_ref(V = {global, _}) -> V;
-reg_name2_ref(V = {via, _, _}) -> V.
+reg_name2_ref({global, _} = V) -> V;
+reg_name2_ref({via, _, _} = V) -> V.
 
 -spec where(reg_name()) -> pid().
 where({local, Name}) ->

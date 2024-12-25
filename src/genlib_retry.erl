@@ -50,12 +50,12 @@ linear(Retries, Timeout) when
         ?IS_POSINT(Timeout)
 ->
     {linear, Retries, Timeout};
-linear(Retries = {max_total_timeout, MaxTotalTimeout}, Timeout) when
+linear({max_total_timeout, MaxTotalTimeout} = Retries, Timeout) when
     ?IS_MAX_TOTAL_TIMEOUT(MaxTotalTimeout) andalso
         ?IS_POSINT(Timeout)
 ->
     {linear, compute_retries(linear, Retries, Timeout), Timeout};
-linear(Retries = {max_total_timeout, MaxTotalTimeout}, {jitter, Timeout, Epsilon}) when
+linear({max_total_timeout, MaxTotalTimeout} = Retries, {jitter, Timeout, Epsilon}) when
     ?IS_MAX_TOTAL_TIMEOUT(MaxTotalTimeout) andalso
         ?IS_POSINT(Timeout) andalso
         ?IS_POSINT(Epsilon)
@@ -97,14 +97,14 @@ exponential(Retries, Factor, {jitter, Timeout, Epsilon}, MaxTimeout) when
         (MaxTimeout =:= infinity orelse ?IS_POSINT(MaxTimeout))
 ->
     {exponential, Retries, Factor, {jitter, Timeout, Epsilon}, MaxTimeout};
-exponential(Retries = {max_total_timeout, MaxTotalTimeout}, Factor, Timeout, MaxTimeout) when
+exponential({max_total_timeout, MaxTotalTimeout} = Retries, Factor, Timeout, MaxTimeout) when
     ?IS_MAX_TOTAL_TIMEOUT(MaxTotalTimeout) andalso
         ?IS_POSINT(Timeout) andalso
         Factor > 0 andalso
         (MaxTimeout =:= infinity orelse ?IS_POSINT(MaxTimeout))
 ->
     {exponential, compute_retries(exponential, Retries, {Factor, Timeout, MaxTimeout}), Factor, Timeout, MaxTimeout};
-exponential(Retries = {max_total_timeout, MaxTotalTimeout}, Factor, {jitter, Timeout, Epsilon}, MaxTimeout) when
+exponential({max_total_timeout, MaxTotalTimeout} = Retries, Factor, {jitter, Timeout, Epsilon}, MaxTimeout) when
     ?IS_MAX_TOTAL_TIMEOUT(MaxTotalTimeout) andalso
         ?IS_POSINT(Timeout) andalso
         ?IS_POSINT(Epsilon) andalso
@@ -115,12 +115,12 @@ exponential(Retries = {max_total_timeout, MaxTotalTimeout}, Factor, {jitter, Tim
         {jitter, Timeout, Epsilon}, MaxTimeout}.
 
 -spec intervals([pos_integer(), ...]) -> strategy().
-intervals(Array = [{jitter, Timeout, Epsilon} | _]) when
+intervals([{jitter, Timeout, Epsilon} | _] = Array) when
     ?IS_POSINT(Timeout) andalso
         ?IS_POSINT(Epsilon)
 ->
     {array, Array};
-intervals(Array = [Timeout | _]) when ?IS_POSINT(Timeout) ->
+intervals([Timeout | _] = Array) when ?IS_POSINT(Timeout) ->
     {array, Array}.
 
 -spec timecap(MaxTimeToSpend :: timeout(), strategy()) -> strategy().
