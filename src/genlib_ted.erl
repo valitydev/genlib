@@ -35,5 +35,5 @@ run_proceed(F, T, As) when is_tuple(T) ->
 run_proceed(_F, T, _As) ->
     T.
 
-submerge(Annos = #{depth := D}) ->
+submerge(#{depth := D} = Annos) ->
     Annos#{depth := D + 1}.

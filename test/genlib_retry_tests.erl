@@ -164,11 +164,11 @@ exponential_compute_retries_test() ->
         Fixture
     ).
 
-assert_max_retry(Retry = {linear, _Retries, Timeout}, MaxTotalTimeout) ->
+assert_max_retry({linear, _Retries, Timeout} = Retry, MaxTotalTimeout) ->
     {_, SumTimeout} = process_retry(Retry),
     ?assertMatch(true, SumTimeout =< MaxTotalTimeout),
     ?assertMatch(true, SumTimeout + Timeout >= MaxTotalTimeout);
-assert_max_retry(Retry = {exponential, _Retries, _Factor, _Timeout, _MaxTimeout}, MaxTotalTimeout) ->
+assert_max_retry({exponential, _Retries, _Factor, _Timeout, _MaxTimeout} = Retry, MaxTotalTimeout) ->
     {{exponential, _, _, NextTimeout, _}, SumTimeout} = process_retry(Retry),
     ?assertMatch(true, SumTimeout =< MaxTotalTimeout),
     ?assertMatch(true, (SumTimeout + NextTimeout) >= MaxTotalTimeout).

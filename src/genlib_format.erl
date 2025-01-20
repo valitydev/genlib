@@ -181,7 +181,7 @@ construct_format_opts(Opts) ->
 
 format_stacktrace([], _FmtOpts, Acc) ->
     Acc;
-format_stacktrace([{Module, Function, As, Opts} | Rest], FmtOpts = #format_opts{newlines = Nl}, Acc) ->
+format_stacktrace([{Module, Function, As, Opts} | Rest], #format_opts{newlines = Nl} = FmtOpts, Acc) ->
     I =
         case Acc of
             <<>> -> <<"in ">>;

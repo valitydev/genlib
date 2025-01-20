@@ -74,6 +74,9 @@ eunit:
 common-test:
 	$(REBAR) ct --cover
 
+proper:
+	$(REBAR) proper --cover
+
 cover:
 	$(REBAR) covertool generate
 
@@ -86,7 +89,7 @@ clean:
 distclean: clean-build-image
 	rm -rf _build
 
-test: eunit common-test
+test: eunit common-test proper
 
 cover-report:
 	$(REBAR) cover

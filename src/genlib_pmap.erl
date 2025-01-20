@@ -157,9 +157,9 @@ await(Collector, [{{{WorkerPid, MRef}, Ref}, Extra} | WorkersLeft], Results) ->
 await(_Collector, [], Results) ->
     Results.
 
-collect_one(Result = {ok, _}, _, Acc) ->
+collect_one({ok, _} = Result, _, Acc) ->
     [Result | Acc];
-collect_one(Result = {error, _}, _, Acc) ->
+collect_one({error, _} = Result, _, Acc) ->
     [Result | Acc];
 collect_one(timeout, _, Acc) ->
     [timeout | Acc];

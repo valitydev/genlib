@@ -82,7 +82,7 @@ cat(S1, S2) ->
     cat(iolist_to_binary(S1), iolist_to_binary(S2)).
 
 -spec cat([iodata(), ...]) -> binary().
-cat(Ss = [_ | _]) ->
+cat([_ | _] = Ss) ->
     iolist_to_binary(Ss);
 cat(Badarg) ->
     error(badarg, [Badarg]).
@@ -112,9 +112,9 @@ to_case(_Case, <<>>, Acc) ->
     Acc;
 to_case(_Case, <<C, _/binary>>, _Acc) when C > 127 ->
     error(badarg);
-to_case(Case = lower, <<C, Rest/binary>>, Acc) ->
+to_case(lower = Case, <<C, Rest/binary>>, Acc) ->
     to_case(Case, Rest, <<Acc/binary, (to_lower_char(C))>>);
-to_case(Case = upper, <<C, Rest/binary>>, Acc) ->
+to_case(upper = Case, <<C, Rest/binary>>, Acc) ->
     to_case(Case, Rest, <<Acc/binary, (to_upper_char(C))>>).
 
 -spec to_snakecase(binary()) -> binary().

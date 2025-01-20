@@ -29,7 +29,7 @@ get(Key, Map) ->
     get(Key, Map, undefined).
 
 -spec get(any(), map(), Default) -> Default | term() when Default :: term().
-get(Key, Map = #{}, Default) ->
+get(Key, #{} = Map, Default) ->
     case maps:find(Key, Map) of
         {ok, Value} ->
             Value;
@@ -59,7 +59,7 @@ deepput([Key | Rest], Value, Map) ->
     K2 :: any(),
     V1 :: any(),
     V2 :: any().
-truemap(F, Map = #{}) ->
+truemap(F, #{} = Map) ->
     maps:fold(
         fun(K, V, M) ->
             {Kn, Vn} = F(K, V),
@@ -70,7 +70,7 @@ truemap(F, Map = #{}) ->
     ).
 
 -spec foreach(Function, map()) -> ok when Function :: fun((Key :: any(), Value :: any()) -> any()).
-foreach(F, Map = #{}) ->
+foreach(F, #{} = Map) ->
     maps:fold(
         fun(K, V, _) ->
             F(K, V),
@@ -81,7 +81,7 @@ foreach(F, Map = #{}) ->
     ).
 
 -spec compact(map()) -> map().
-compact(Map = #{}) ->
+compact(#{} = Map) ->
     maps:fold(
         fun
             (K, undefined, M) -> maps:remove(K, M);
