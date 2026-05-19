@@ -33,7 +33,7 @@
 
 %%
 
--opaque t() :: {integer(), pos_integer()}.
+-type t() :: {integer(), pos_integer()}.
 
 -type rounding_method() :: round_half_towards_zero | round_half_away_from_zero.
 
