@@ -114,9 +114,6 @@ maps_common_keys(LeftMap, RightMap) ->
         )
     ).
 
-map() ->
-    ?LET(KVList, list({term(), term()}), maps:from_list(KVList)).
-
 non_empty_map() ->
     ?LET(KVList, non_empty(list({term(), term()})), maps:from_list(KVList)).
 
